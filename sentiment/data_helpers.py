@@ -405,7 +405,7 @@ def load_trustpilot(reload = False):
 
     else:
         # filename = "../trustpilot/merge.en.random10k"
-        filename = "../trustpilot/merge.en.downsample"
+        filename = "merge.en.downsample"
         examples = cPickle.load( open(filename, "rb") )
         print("Total No. of instances:{}".format(len(examples)))
 
@@ -438,7 +438,7 @@ def load_trustpilot(reload = False):
         #     )
         emb_size = 50
         w2v_d = load_glove_vec(
-            filename = "/home/yitongl4/Data/glove.6B.50d.txt",
+            filename = "/home/yitong/Data/glove.6B.50d.txt",
             vocab = vocab_processor.vocab,
             dim = emb_size
             )

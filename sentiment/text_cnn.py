@@ -96,16 +96,17 @@ class TextCNN(object):
             self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
             self.h_drop = tf.nn.dropout(self.pub_h_pool, self.dropout_keep_prob)
         
-        self.h1 = self.wx_plus_b(
-            scope_name="h1",
-            x=self.h_drop,
-            size=[num_filters * len(filter_sizes), hidden_size]
-            )
 
         with tf.variable_scope("rating"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
             self.rating_scores = self.wx_plus_b(
                 scope_name='score',
-                x=self.h1,
+                x=h1,
                 size=[hidden_size, num_ratings]
                 )
             # CalculateMean cross-entropy loss
@@ -127,9 +128,15 @@ class TextCNN(object):
         
         
         with tf.variable_scope("location"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
             self.location_scores = self.wx_plus_b(
                 scope_name="score",
-                x=self.h1,
+                x=h1,
                 size=[hidden_size, num_locations]
                 )
             with tf.name_scope("loss"):
@@ -148,9 +155,15 @@ class TextCNN(object):
 
 
         with tf.variable_scope("gender"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
             self.gender_score = self.wx_plus_b(
                 scope_name="score",
-                x=self.h1,
+                x=h1,
                 size=[hidden_size, num_genders]
                 )
             with tf.name_scope("loss"):
@@ -169,9 +182,15 @@ class TextCNN(object):
 
 
         with tf.variable_scope("age"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
             self.age_score = self.wx_plus_b(
                 scope_name="score",
-                x=self.h1,
+                x=h1,
                 size=[hidden_size, num_ages]
                 )
             with tf.name_scope("loss"):
@@ -187,3 +206,84 @@ class TextCNN(object):
                     "float"
                     )
                 self.age_accuracy = tf.reduce_mean(cor_pred, name='acc')
+
+
+        with tf.variable_scope("l_attacker"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
+            self.location_attacker_scores = self.wx_plus_b(
+                scope_name="score",
+                x=h1,
+                size=[hidden_size, num_locations]
+                )
+            with tf.name_scope("loss"):
+                losses = tf.nn.softmax_cross_entropy_with_logits(
+                    logits=self.location_attacker_scores,
+                    labels=self.input_location
+                    )
+                self.location_attacker_loss = tf.reduce_mean(losses)
+            with tf.name_scope("accuracy"):
+                self.location_attacker_pred = tf.argmax(self.location_attacker_scores, 1, name="predictions")
+                cor_pred = tf.cast(
+                    tf.equal(self.location_attacker_pred, tf.argmax(self.input_location, 1) ),
+                    "float"
+                    )
+                self.location_attacker_accuracy = tf.reduce_mean(cor_pred, name="acc")
+
+
+        with tf.variable_scope("g_attacker"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
+            self.gender_attacker_score = self.wx_plus_b(
+                scope_name="score",
+                x=h1,
+                size=[hidden_size, num_genders]
+                )
+            with tf.name_scope("loss"):
+                losses = tf.nn.softmax_cross_entropy_with_logits(
+                    logits=self.gender_attacker_score,
+                    labels=self.input_gender
+                    )
+                self.gender_attacker_loss = tf.reduce_mean( losses )
+            with tf.name_scope("acc"):
+                self.gender_attacker_pred = tf.argmax( self.gender_attacker_score, 1, name='predictions')
+                cor_pred = tf.cast(
+                    tf.equal(self.gender_attacker_pred, tf.argmax(self.input_gender, 1) ),
+                    "float"
+                    )
+                self.gender_accuracy = tf.reduce_mean(cor_pred, name='acc')
+
+
+        with tf.variable_scope("a_attacker"):
+            h1 = self.wx_plus_b(
+                scope_name="h1",
+                x=self.h_drop,
+                size=[num_filters * len(filter_sizes), hidden_size]
+            )
+            h1 = tf.nn.relu(h1, name="relu")
+            self.age_attacker_score = self.wx_plus_b(
+                scope_name="score",
+                x=h1,
+                size=[hidden_size, num_ages]
+                )
+            with tf.name_scope("loss"):
+                losses = tf.nn.softmax_cross_entropy_with_logits(
+                    logits=self.age_attacker_score,
+                    labels=self.input_age
+                    )
+                self.age_attacker_loss = tf.reduce_mean( losses )
+            with tf.name_scope("acc"):
+                self.age_attacker_pred = tf.argmax( self.age_attacker_score, 1, name='predictions')
+                cor_pred = tf.cast(
+                    tf.equal(self.age_attacker_pred, tf.argmax(self.input_age, 1) ),
+                    "float"
+                    )
+                self.age_attacker_accuracy = tf.reduce_mean(cor_pred, name='acc')

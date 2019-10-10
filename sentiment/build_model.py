@@ -25,6 +25,8 @@ tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularizaion lambda (default: 0
 tf.flags.DEFINE_float("learning_rate", 1e-4, "Learning rate alpha")
 tf.flags.DEFINE_float("lr_lambda", 1e-3, "lr lambda")
 
+tf.flags.DEFINE_string("adv_attribute", "age", "age, gender, location, or all")
+
 #  parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
 tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs (default: 200 --> 100 by lrank)")
@@ -102,10 +104,23 @@ with tf.Graph().as_default():
         # print var_gend
         var_age = [var for var in all_var_list if 'age' in var.name]
         # print var_gend
-        assert( len(var_loca) == 2 and len(var_gend) == 2 and len(var_age) == 2 )
-        #var_d = var_loca + var_gend + var_age
-        var_d = var_age
-        disc_loss = cnn.location_loss + cnn.gender_loss + cnn.age_loss
+        assert( len(var_loca) == 4 and len(var_gend) == 4 and len(var_age) == 4 )
+
+        if FLAGS.adv_attribute == "age":
+            var_d = var_age
+            disc_loss = cnn.age_loss
+        elif FLAGS.adv_attribute == "gender":
+            var_d = var_gend
+            disc_loss = cnn.gender_loss
+        elif FLAGS.adv_attribute == "location":
+            var_d = var_loca
+            disc_loss = cnn.location_loss
+        elif FLAGS.adv_attribute == "all":
+            var_d = var_loca + var_gend + var_age
+            disc_loss = cnn.location_loss + cnn.gender_loss + cnn.age_loss  
+        else:
+            assert(False)
+
         optimizer_d = tf.train.AdamOptimizer(
             learning_rate=learning_rate
             ).minimize(
@@ -113,11 +128,41 @@ with tf.Graph().as_default():
                 var_list=var_d
                 )
 
-        var_g = [var for var in all_var_list if var not in var_d]
+        #define attackers opts
+        var_attack_l = [var for var in all_var_list if 'l_attacker' in var.name]
+        optimizer_attack_l = tf.train.AdamOptimizer(
+            learning_rate=learning_rate
+            ).minimize(
+                cnn.location_attacker_loss,
+                var_list=var_attack_l,
+                global_step=global_step
+                )
+
+        var_attack_g = [var for var in all_var_list if 'g_attacker' in var.name]
+        optimizer_attack_g = tf.train.AdamOptimizer(
+            learning_rate=learning_rate
+            ).minimize(
+                cnn.gender_attacker_loss,
+                var_list=var_attack_g,
+                global_step=global_step
+                )
+
+        var_attack_a = [var for var in all_var_list if 'a_attacker' in var.name]
+        optimizer_attack_a = tf.train.AdamOptimizer(
+            learning_rate=learning_rate
+            ).minimize(
+                cnn.age_attacker_loss,
+                var_list=var_attack_a,
+                global_step=global_step
+                )
+        assert( len(var_attack_l) == 4 and len(var_attack_g) == 4 and len(var_attack_a) == 4 )
+
+        #representation opt
+        var_g = [var for var in all_var_list if var not in (var_loca + var_gend + var_age + var_attack_l + var_attack_g + var_attack_a)]
         optimizer_g = tf.train.AdamOptimizer(
             learning_rate=learning_rate
             ).minimize(
-                cnn.rating_loss - adv_lambda * cnn.age_loss,
+                cnn.rating_loss - adv_lambda * disc_loss,
                 var_list=var_g,
                 global_step=global_step
                 )
@@ -202,6 +247,78 @@ with tf.Graph().as_default():
                 )
             )
 
+        def train_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer, adv_lam=0, lr = 1e-4):
+            """1
+            Evaluates model on a dev set
+            """
+            feed_dict = {
+              cnn.input_x: batch_x,
+              cnn.input_rating: batch_rat,
+              cnn.input_location: batch_loc,
+              cnn.input_gender: batch_gen,
+              cnn.input_age: batch_age,
+              learning_rate: lr,
+              adv_lambda: adv_lam,
+              cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
+            }
+
+            _, step, l_loc, p_loc = sess.run(
+                [optimizer_attack_l, global_step,
+                cnn.location_attacker_loss, cnn.location_attacker_pred],
+                feed_dict)
+
+            _, step, l_gen, p_gen = sess.run(
+                [optimizer_attack_g, global_step,
+                cnn.gender_attacker_loss, cnn.gender_attacker_pred],
+                feed_dict)
+
+            _, step, l_age, p_age = sess.run(
+                [optimizer_attack_a, global_step,
+                cnn.age_attacker_loss, cnn.age_attacker_pred],
+                feed_dict)
+            
+            time_str = datetime.datetime.now().isoformat()
+            print("0\t{}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}".format(
+                step,
+                l_rat, a_rat,
+                l_loc, incomp_acc(p_loc, batch_loc),
+                l_gen, incomp_acc(p_gen, batch_gen),
+                l_age, incomp_acc(p_age, batch_age)
+                )
+            )
+
+        def train_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer, adv_lam=0, lr = 1e-4):
+            """1
+            Evaluates model on a dev set
+            """
+            feed_dict = {
+              cnn.input_x: batch_x,
+              cnn.input_rating: batch_rat,
+              cnn.input_location: batch_loc,
+              cnn.input_gender: batch_gen,
+              cnn.input_age: batch_age,
+              learning_rate: lr,
+              adv_lambda: adv_lam,
+              cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
+            }
+            _, step, l_rat, a_rat, l_loc, p_loc, l_gen, p_gen, l_age, p_age = sess.run(
+                [optimizer, global_step,
+                cnn.rating_loss, cnn.rating_accuracy,
+                cnn.location_attacker_loss, cnn.location_attacker_pred,
+                cnn.gender_attacker_loss, cnn.gender_attacker_pred,
+                cnn.age_attacker_loss, cnn.age_attacker_pred],
+                feed_dict)
+            
+            time_str = datetime.datetime.now().isoformat()
+            print("0\t{}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}".format(
+                step,
+                l_rat, a_rat,
+                l_loc, incomp_acc(p_loc, batch_loc),
+                l_gen, incomp_acc(p_gen, batch_gen),
+                l_age, incomp_acc(p_age, batch_age)
+                )
+            )
+
 
         #data_split
         x_train, loc_train, gen_train, age_train, rat_train, \
@@ -227,7 +344,8 @@ with tf.Graph().as_default():
         training_learning_rate = FLAGS.learning_rate        
 
         
-        for _ in range(FLAGS.num_epochs * data_size / FLAGS.batch_size):
+        # for _ in range(FLAGS.num_epochs * data_size / FLAGS.batch_size):
+        for _ in range(100):
 
             current_step = tf.train.global_step(sess, global_step)
             lr_lamb = (current_step / 100) / 1000.0
@@ -250,11 +368,13 @@ with tf.Graph().as_default():
                     best_dev_score = acc
                     best_test_score = test_score
 
-        for _ in range(10 * FLAGS.num_epochs * data_size / FLAGS.batch_size):
+        print("training attack")
+        for _ in range(FLAGS.num_epochs * data_size / FLAGS.batch_size):
             batch_x, batch_loc, batch_gen, batch_age, batch_rat = training_batch_iter.next_balanced_label_batch()
-            train_step( batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer_d, adv_lam=lr_lamb, lr=training_learning_rate)
+            train_attacker_step( batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer_attack_l, adv_lam=lr_lamb, lr=training_learning_rate * 0.1 )
 
-        test_score, a_l, a_g, a_a = dev_step( x_test, loc_test, gen_test, age_test, rat_test, 2)
-        print a_l, a_g, a_a    
+            current_step = tf.train.global_step(sess, global_step)
+            if current_step % FLAGS.evaluate_every == 0:
+                test_score, a_l, a_g, a_a = dev_attacker_step( x_test, loc_test, gen_test, age_test, rat_test, 2)
 
 print best_dev_score, best_test_score
