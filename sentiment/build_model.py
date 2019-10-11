@@ -287,7 +287,7 @@ with tf.Graph().as_default():
                 )
             )
 
-        def train_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer, adv_lam=0, lr = 1e-4):
+        def dev_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer, adv_lam=0, lr = 1e-4):
             """1
             Evaluates model on a dev set
             """
