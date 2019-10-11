@@ -54,7 +54,7 @@ FLAGS.embedding_dim = emb_size
 FLAGS.batch_size
 print("\nParameters:")
 for attr, value in sorted(FLAGS.__flags.iteritems()):
-    print("{}={}".format(attr.upper(), value))
+    print("{}={}".format(attr.upper(), value.value) )
 print("")
 
 
@@ -143,8 +143,7 @@ with tf.Graph().as_default():
             learning_rate=learning_rate
             ).minimize(
                 cnn.gender_attacker_loss,
-                var_list=var_attack_g,
-                global_step=global_step
+                var_list=var_attack_g
                 )
 
         var_attack_a = [var for var in all_var_list if 'a_attacker' in var.name]
@@ -152,8 +151,7 @@ with tf.Graph().as_default():
             learning_rate=learning_rate
             ).minimize(
                 cnn.age_attacker_loss,
-                var_list=var_attack_a,
-                global_step=global_step
+                var_list=var_attack_a
                 )
         assert( len(var_attack_l) == 4 and len(var_attack_g) == 4 and len(var_attack_a) == 4 )
 
@@ -262,8 +260,9 @@ with tf.Graph().as_default():
               cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
             }
 
-            _, step, l_loc, p_loc = sess.run(
+            _, step, l_rat, a_rat, l_loc, p_loc = sess.run(
                 [optimizer_attack_l, global_step,
+                cnn.rating_loss, cnn.rating_accuracy,
                 cnn.location_attacker_loss, cnn.location_attacker_pred],
                 feed_dict)
 
@@ -287,7 +286,7 @@ with tf.Graph().as_default():
                 )
             )
 
-        def dev_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, optimizer, adv_lam=0, lr = 1e-4):
+        def dev_attacker_step(batch_x, batch_loc, batch_gen, batch_age, batch_rat, data_id=1):
             """1
             Evaluates model on a dev set
             """
@@ -297,12 +296,11 @@ with tf.Graph().as_default():
               cnn.input_location: batch_loc,
               cnn.input_gender: batch_gen,
               cnn.input_age: batch_age,
-              learning_rate: lr,
-              adv_lambda: adv_lam,
-              cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
+              adv_lambda: 0.,
+              cnn.dropout_keep_prob: 1.
             }
-            _, step, l_rat, a_rat, l_loc, p_loc, l_gen, p_gen, l_age, p_age = sess.run(
-                [optimizer, global_step,
+            step, l_rat, a_rat, l_loc, p_loc, l_gen, p_gen, l_age, p_age = sess.run(
+                [global_step,
                 cnn.rating_loss, cnn.rating_accuracy,
                 cnn.location_attacker_loss, cnn.location_attacker_pred,
                 cnn.gender_attacker_loss, cnn.gender_attacker_pred,
@@ -310,7 +308,7 @@ with tf.Graph().as_default():
                 feed_dict)
             
             time_str = datetime.datetime.now().isoformat()
-            print("0\t{}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}".format(
+            print("1\t{}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}\t{:g}".format(
                 step,
                 l_rat, a_rat,
                 l_loc, incomp_acc(p_loc, batch_loc),
@@ -318,6 +316,7 @@ with tf.Graph().as_default():
                 l_age, incomp_acc(p_age, batch_age)
                 )
             )
+            return a_rat, p_loc, p_gen, p_age
 
 
         #data_split
@@ -344,8 +343,7 @@ with tf.Graph().as_default():
         training_learning_rate = FLAGS.learning_rate        
 
         
-        # for _ in range(FLAGS.num_epochs * data_size / FLAGS.batch_size):
-        for _ in range(100):
+        for _ in range(FLAGS.num_epochs * data_size / FLAGS.batch_size):
 
             current_step = tf.train.global_step(sess, global_step)
             lr_lamb = (current_step / 100) / 1000.0
