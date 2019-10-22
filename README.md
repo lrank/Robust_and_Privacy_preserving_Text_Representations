@@ -8,10 +8,10 @@ It is available to access the dataset through the referred papers. Particular I 
 
 - TP:
   Dirk Hovy. 2015. Demographic factors improve classification performance. 
-  https://bitbucket.org/lowlands/release/src/master/WWW2015/data/
+  https://bitbucket.org/lowlands/release/src/master/ACL2015/tagging_age/
   
   Dirk Hovy, Anders Johannsen, and Anders Søgaard. 2015. User review sites as a resource for large-scale sociolinguistic studies
-  https://bitbucket.org/lowlands/release/src/master/ACL2015/tagging_age/
+  https://bitbucket.org/lowlands/release/src/master/WWW2015/data/
   (You might need to contract the Dirk to have a updated one.)
 
 - WebEng:
