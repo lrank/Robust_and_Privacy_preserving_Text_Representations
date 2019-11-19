@@ -13,12 +13,7 @@ import ast
 import random
 random.seed(12345)
 
-dataset_path = "../../dataset/TrustPilot"
-total_json_filename = "../../dataset/TrustPilot_processed/total_data.json"
-train_json_filename = "../../dataset/TrustPilot_processed/train_data.json"
-test_json_filename = "../../dataset/TrustPilot_processed/test_data.json"
-valid_json_filename = "../../dataset/TrustPilot_processed/valid_data.json"
-
+dataset_path = "../../dataset/TrustPilot/"
 total_csv_filename = "../../dataset/TrustPilot_processed/total_data.csv"
 train_csv_filename = "../../dataset/TrustPilot_processed/train_data.csv"
 test_csv_filename = "../../dataset/TrustPilot_processed/test_data.csv"
@@ -26,13 +21,9 @@ valid_csv_filename = "../../dataset/TrustPilot_processed/valid_data.csv"
 
 
 symbol_list = [",", ".", "-", "/", "[", "]", "?", "<", ">", "{", "}", "|", "\\", ":", ";", "'", "!", "@", "#", "$", "%",
-               "_", "(", ")"]
-
-# Train: Valid: Test = 8 : 1 : 1
-Train_Valid_Test_Ratio = 0.8
+               "_", "(", ")", "\n"]
 
 
-# Load all the files and form train.json, test.json
 class GetAttributes:
     """
     It is a class to load TrustPilot dataset and form train.json, test.json.
@@ -71,47 +62,61 @@ def data_cleaning(lines):
     return clean_lines
 
 
-def load_TrustPilot(filename, age, gender):
+def load_data(filename, age, gender):
     with open(filename, 'r') as f:
         lines = f.readlines()
 
     # Data Cleaning
     clean_lines = data_cleaning(lines)
 
-    words_list = []
-    words_tuple = ()
-    tags_list = []
-    tags_tuple = ()
-    sentence_dict = {}
-    file_data = []
+    word_list = []
+    tag_list = []
+    age_list = []
+    gender_list = []
+    for item in clean_lines:
+        word = item.split("\t")[0]
+        tag = item.split("\t")[1].strip("\n")
+        word_list.append(word)
+        tag_list.append(tag)
+        age_list.append(age)
+        gender_list.append(gender)
 
-    # Load data
-    for idx in range(len(clean_lines)):
-        if clean_lines[idx] != "\n":
-            word = clean_lines[idx].split("\t")[0]
-            words_list.append(word)
-            words_tuple = tuple(words_list)
+    arr = np.array((word_list, tag_list, age_list, gender_list)).T
+    return arr
 
-            tag = clean_lines[idx].split("\t")[1]
-            tags_list.append(tag.strip("\n"))
-            tags_tuple = tuple(tags_list)
-        if clean_lines[idx] == "\n":
-            # sentence_dict["words"] = words_list
-            # sentence_dict["tags"] = tags_list
 
-            sentence_dict["words"] = words_tuple
-            sentence_dict["tags"] = tags_tuple
+def load_TrustPilot(dataset_path):
 
-            sentence_dict["age"] = age
-            sentence_dict["gender"] = gender
-            file_data.append(sentence_dict)
+    print("########## We are now loading TrustPilot! ##########")
 
-            # Clear words_list, tags_list and sentence_dict
-            words_list = []
-            tags_list = []
-            sentence_dict = {}
+    getAttributes = GetAttributes()
+    data_list = []
+    for file in os.listdir(dataset_path):
 
-    return file_data
+        if not file.startswith("en"):
+            continue
+
+        age = getAttributes.getAge(file)
+        gender = getAttributes.getGender(file)
+        print("file = {}".format(file))
+        print("age = {}".format(age))
+        print("gender = {}".format(gender))
+
+        filename = os.path.join(dataset_path, file)
+        file_arr = load_data(filename, age, gender)
+        print("{}_arr.shape = {}\n".format(file, file_arr.shape))
+
+        assert file_arr.shape[1] == 4
+        data_list.append(file_arr)
+
+    print("########## Loading Successfully! ##########\n")
+    return np.concatenate(data_list)
+
+
+def save_array_csv(arr, csv_filename):
+
+    df = pd.DataFrame(data=arr, columns=['word', 'tag', 'age', 'gender'])
+    return df.to_csv(csv_filename, index=False)
 
 
 def save_to_json(content, json_filename):
@@ -132,72 +137,3 @@ def save_to_csv(total_data, csv_filename):
         # Write dict keys
         # dict_writer.writeheader()
         dict_writer.writerows(total_data)
-
-
-def main():
-    getAttributes = GetAttributes()
-
-    total_file_data = []
-    for file in os.listdir(dataset_path):
-        print("file = ", file)
-
-        age = getAttributes.getAge(file)
-        print("age = ", age)
-
-        gender = getAttributes.getGender(file)
-        print("gender = ", gender)
-
-        file_data = load_TrustPilot(os.path.join(dataset_path, file), age, gender)
-        print("file_data = ", file_data)
-        print("len(file_data) = ", len(file_data))
-
-        total_file_data.append(file_data)
-        print("total_file_data = ", total_file_data)
-        print("len(total_file_data) = ", len(total_file_data))
-        print("\n")
-
-
-    total_data = []
-    for item in total_file_data:
-        # print("len(item) = ", len(item))
-        for child_item in item:
-            total_data.append(child_item)
-
-    print("total_data = ", total_data)
-    print("len(total_data) = ", len(total_data))
-    print("total_data[0] = ", total_data[0])
-    print("total_data[0].keys() = ", total_data[0].keys())
-    print("\n")
-
-    # Save total_data to json and csv
-    save_to_json(total_data, total_json_filename)
-    save_to_csv(total_data, total_csv_filename)
-
-    # Shuffle data
-    random.shuffle(total_data)
-
-    # Split train_data into train_data, valid_data and test data
-    train_data = total_data[:int(len(total_data) * Train_Valid_Test_Ratio)]
-    valid_data = total_data[int(len(total_data) * Train_Valid_Test_Ratio):
-                            int(len(total_data) * Train_Valid_Test_Ratio) + int(
-                                len(total_data) * ((1 - Train_Valid_Test_Ratio) / 2)) + 1]
-    test_data = total_data[int(len(total_data) * Train_Valid_Test_Ratio) + int(
-        len(total_data) * ((1 - Train_Valid_Test_Ratio) / 2)) + 1:]
-
-    print("len(train_data) = ", len(train_data))
-    print("len(valid_data) = ", len(valid_data))
-    print("len(test_data) = ", len(test_data))
-
-    # Save to json file
-    save_to_json(train_data, train_json_filename)
-    save_to_json(test_data, test_json_filename)
-    save_to_json(valid_data, valid_json_filename)
-
-    # Save to csv file
-    save_to_csv(train_data, train_csv_filename)
-    save_to_csv(test_data, test_csv_filename)
-    save_to_csv(valid_data, valid_csv_filename)
-
-
-if __name__ == "__main__":
-    main()

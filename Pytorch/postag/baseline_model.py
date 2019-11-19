@@ -19,10 +19,8 @@ import numpy as np
 from utils import load_json
 
 
-train_csv_path = "../../dataset/TrustPilot_processed/train_data.csv"
-test_csv_path = "../../dataset/TrustPilot_processed/test_data.csv"
-train_json_path = "../../dataset/TrustPilot_processed/train_data.json"
-test_json_path = "../../dataset/TrustPilot_processed/test_data.json"
+train_csv_path = "../../dataset/TrustPilot_processed/train.csv"
+test_csv_path = "../../dataset/TrustPilot_processed/test.csv"
 
 symbol_list = [",", ".", "-", "/", "[", "]", "?", "<", ">", "{", "}", "|", "\\", ":", ";", "'", "!", "@", "#", "$", "%",
                "_", "(", ")"]
@@ -46,21 +44,22 @@ def prepare_sequence(seq, to_ix):
     return torch.tensor(idxs, dtype=torch.long)
 
 
-def build_word_tag_tuple(dataset_path):
-
-    json_data = load_json(dataset_path)
+def build_word_tag_tuple(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
 
     word_tag_list = []
-    for item in json_data:
-        word = item['words']
-        tag = item['tags']
-        word_tag_list += list(zip(word, tag))
+    for line in lines:
+        line_split = line.split(",")
+        word = line_split[0]
+        tag = line_split[1]
+        word_tag_list.append((word, tag))
 
     return word_tag_list
 
 
-training_data = build_word_tag_tuple(train_json_path)
-testing_data = build_word_tag_tuple(test_json_path)
+training_data = build_word_tag_tuple(train_csv_path)
+testing_data = build_word_tag_tuple(test_csv_path)
 print("training_data = {}".format(training_data))
 
 

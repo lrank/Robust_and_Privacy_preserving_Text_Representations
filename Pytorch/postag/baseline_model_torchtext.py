@@ -17,8 +17,8 @@ from torchtext import data, datasets
 
 import json
 import random
-
 SEED = 12345
+
 
 # Dataset path
 TrustPilot_processed_dataset_path = "../../dataset/TrustPilot_processed/"
@@ -30,29 +30,29 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 ####################################
 #         Hyper-parameters         #
 ####################################
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 LEARNING_RATE = 1e-3
 EMBEDDING_DIM = 100
 HIDDEN_DIM = 256
 N_LAYERS = 2
 BIDIRECTIONAL = True
 DROUPOUT = 0.5
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20
 
 
 ####################################
 #          Preparing Data          #
 ####################################
 # 1. data.Field()
-TEXT = data.Field(include_lengths=True, unk_token="meal")
+TEXT = data.Field(include_lengths=True, pad_token='<pad>', unk_token='<unk>')
 TAG_LABEL = data.LabelField()
 AGE_LABEL = data.LabelField()
 GENDER_LABEL = data.LabelField()
 
 # 2. data.TabularDataset
 train_data, test_data = data.TabularDataset.splits(path=TrustPilot_processed_dataset_path,
-                                                   train="train_data.csv",
-                                                   test="test_data.csv",
+                                                   train="train.csv",
+                                                   test="test.csv",
                                                    fields=[('text', TEXT), ('tag_label', TAG_LABEL),
                                                            ('age_label', AGE_LABEL), ('gender_label', GENDER_LABEL)],
                                                    format="csv")
@@ -194,7 +194,6 @@ for epoch in range(NUM_EPOCHS):
     print("total_accuracy = {:.4f}%\n".format(100 * train_total_correct / len(train_data)))
 
 
-"""
 ########## Evaluation ##########
 model.eval()
 total_correct = 0
@@ -213,8 +212,8 @@ for i, batch in enumerate(valid_iter):
     pred = torch.argmax(y_pred.data, dim=1)
     total_correct += (pred == y).sum().item()
 
-avg_loss = avg_loss / len(test_data)
-print("Test Avg. Loss: {}, Accuracy: {}%"
-      .format(avg_loss, 100 * total_correct / len(test_data)))
-"""
+avg_loss = avg_loss / len(valid_data)
+print("Test Avg. Loss: {:.4f}, Accuracy: {:.4f}%"
+      .format(avg_loss, 100 * total_correct / len(valid_data)))
+
 
