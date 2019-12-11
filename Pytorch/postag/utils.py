@@ -116,7 +116,7 @@ def load_TrustPilot(dataset_path):
 def save_array_csv(arr, csv_filename):
 
     df = pd.DataFrame(data=arr, columns=['word', 'tag', 'age', 'gender'])
-    return df.to_csv(csv_filename, index=False)
+    return df.to_csv(csv_filename, index=False, header=None)
 
 
 def save_to_json(content, json_filename):
