@@ -11,7 +11,7 @@ import random
 SEED = 12345
 random.seed(SEED)
 
-from utils import *
+from Pytorch.postag.utils import *
 
 
 # Filename
