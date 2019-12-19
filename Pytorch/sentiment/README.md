@@ -49,3 +49,10 @@ It is a Python3 file to implement dataset building for torchtext and Pytorch.
 **Please Notice**: 
 I have uploaded the processed dataset `WWW2015_processed`, so you would not need to run `build_dataset.py`. The Python3 file only shows the pre-processing procedure.
 
+- baseline_model.py
+
+It is a Python3 file to implement TextCNN classification with the dataset.
+
+- adv_model.py
+
+It is a Python3 file to implement TextCNN sentiment classification with adversarial training.
