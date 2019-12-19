@@ -33,8 +33,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 ####################################
 #         Hyper-parameters         #
 ####################################
-BATCH_SIZE = 256
-LEARNING_RATE = 1e-3
+BATCH_SIZE = 64
+LEARNING_RATE = 1e-4
+EMBEDDING_DIM = 50
+N_FILTERS = 128
+FILTER_SIZES = [3, 4, 5]
+OUTPUT_DIM = 5
+DROPOUT = 0.5
+NUM_EPOCHS = 200
 
 
 ####################################
@@ -146,11 +152,6 @@ class TextCNN(nn.Module):
 
 # Parameters
 INPUT_DIM = len(TEXT.vocab)
-EMBEDDING_DIM = 300
-N_FILTERS = 200
-FILTER_SIZES = [3, 4, 5]
-OUTPUT_DIM = 5
-DROPOUT = 0.5
 
 # Create an instance
 model = TextCNN(INPUT_DIM, EMBEDDING_DIM, N_FILTERS, FILTER_SIZES, OUTPUT_DIM, DROPOUT)
@@ -166,7 +167,6 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 model = model.to(device)
 
 ########## Train and Validation ##########
-NUM_EPOCHS = 20
 total_step = len(train_iter)
 for epoch in range(NUM_EPOCHS):
     model.train()
