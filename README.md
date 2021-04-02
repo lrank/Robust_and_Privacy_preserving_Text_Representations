@@ -20,3 +20,8 @@ It is available to access the dataset through the referred papers. Particular I 
 - AAVE:
   Anna Jørgensen, Dirk Hovy, and Anders Søgaard. 2016. Learning a POS tagger for AAVE-like language. 
   https://bitbucket.org/soegaard/aave-pos16/src/master/
+
+
+### A pytorch implementation by Xudong
+  
+  https://github.com/HanXudong/ReImplementation_Robust_and_Privacy_preserving_Text_Representations
